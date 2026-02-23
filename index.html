@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLD World | The Nexus AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #050505; overflow: hidden; height: 100vh; display: flex; justify-content: center; align-items: center; perspective: 1000px; }
+        #particle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; }
+
+        /* Intro Card */
+        .glass-card { background: rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 50px; width: 80%; max-width: 600px; text-align: center; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 25px 45px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.05); transform-style: preserve-3d; transition: transform 0.1s ease, opacity 0.8s ease, filter 0.8s ease; }
+        .glass-card.disintegrate { opacity: 0; transform: scale(0.5) translateZ(-500px) !important; filter: blur(20px); pointer-events: none; }
+        .content-wrapper { transform: translateZ(60px); }
+        h1 { color: #fff; font-size: 3rem; letter-spacing: 2px; margin-bottom: 10px; text-shadow: 0 0 20px rgba(0, 255, 255, 0.8); }
+        span.highlight { color: #00ffff; }
+        p { color: rgba(255, 255, 255, 0.7); font-size: 1.2rem; margin-bottom: 30px; line-height: 1.6; }
+
+        .explore-btn { background: transparent; color: #00ffff; border: 2px solid #00ffff; padding: 15px 40px; font-size: 1.1rem; border-radius: 30px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; transition: 0.3s ease; box-shadow: 0 0 15px rgba(0, 255, 255, 0.2); }
+        .explore-btn:hover { background: #00ffff; color: #050505; box-shadow: 0 0 30px rgba(0, 255, 255, 0.8); transform: scale(1.05); }
+
+        /* Terminal Interface */
+        #terminal-interface { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); width: 90%; max-width: 900px; height: 60vh; background: rgba(0, 5, 5, 0.85); border: 1px solid rgba(0, 255, 255, 0.3); border-radius: 10px; box-shadow: 0 0 40px rgba(0, 255, 255, 0.1); padding: 40px; opacity: 0; pointer-events: none; transition: all 1s ease; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+        #terminal-interface.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: all; }
+        #terminal-interface.ai-mode { height: 85vh; border: 1px solid rgba(0, 255, 255, 0.6); box-shadow: 0 0 60px rgba(0, 255, 255, 0.2); }
+
+        .terminal-header { border-bottom: 1px solid rgba(0, 255, 255, 0.3); padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; color: #00ffff; font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; letter-spacing: 1px; transition: 0.5s; }
+        .terminal-body { flex-grow: 1; color: #00ffff; font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; line-height: 1.8; overflow-y: auto; text-shadow: 0 0 5px rgba(0, 255, 255, 0.5); }
+        .cursor { display: inline-block; width: 10px; height: 1.2rem; background-color: #00ffff; animation: blink 1s step-end infinite; vertical-align: middle; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* AI Core Animations */
+        .ai-core-container { display: none; justify-content: center; align-items: center; margin-bottom: 20px; opacity: 0; transition: opacity 1s ease 0.5s; }
+        #terminal-interface.ai-mode .ai-core-container { display: flex; opacity: 1; }
+        .ai-core { width: 60px; height: 60px; border-radius: 50%; background: #00ffff; box-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff, 0 0 60px #00ffff; animation: breathe 3s infinite alternate; }
+        .ai-core.thinking { animation: think 0.2s infinite alternate; background: #fff; box-shadow: 0 0 30px #fff, 0 0 50px #00ffff; }
+        @keyframes breathe { 0% { transform: scale(0.9); opacity: 0.7; } 100% { transform: scale(1.1); opacity: 1; } }
+        @keyframes think { 0% { transform: scale(1); } 100% { transform: scale(1.2); } }
+
+        /* Chat System */
+        .chat-container { display: none; flex-direction: column; flex-grow: 1; overflow-y: auto; padding-right: 10px; margin-bottom: 20px; opacity: 0; transition: opacity 1s ease 1s; scroll-behavior: smooth; }
+        #terminal-interface.ai-mode .chat-container { display: flex; opacity: 1; }
+        .chat-container::-webkit-scrollbar { width: 5px; }
+        .chat-container::-webkit-scrollbar-thumb { background: rgba(0, 255, 255, 0.5); border-radius: 5px; }
+
+        .message { margin-bottom: 15px; max-width: 80%; line-height: 1.5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; letter-spacing: 0.5px; animation: slideIn 0.3s ease forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes slideIn { to { opacity: 1; transform: translateY(0); } }
+        .msg-user { align-self: flex-end; color: #fff; background: rgba(255, 255, 255, 0.1); padding: 12px 18px; border-radius: 15px 15px 0 15px; border: 1px solid rgba(255, 255, 255, 0.2); white-space: pre-wrap; }
+        .msg-ai { align-self: flex-start; color: #00ffff; background: rgba(0, 255, 255, 0.05); padding: 12px 18px; border-radius: 15px 15px 15px 0; border: 1px solid rgba(0, 255, 255, 0.2); text-shadow: 0 0 10px rgba(0, 255, 255, 0.3); }
+
+        /* Input & Upload Controls */
+        .input-area { display: none; width: 100%; border-top: 1px solid rgba(0, 255, 255, 0.3); padding-top: 20px; opacity: 0; transition: opacity 1s ease 1.5s; flex-wrap: wrap; }
+        #terminal-interface.ai-mode .input-area { display: flex; opacity: 1; }
+        #ai-input { flex-grow: 1; background: transparent; border: none; color: #00ffff; font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; outline: none; text-shadow: 0 0 5px rgba(0, 255, 255, 0.5); margin: 0 10px; }
+        #ai-input::placeholder { color: rgba(0, 255, 255, 0.3); }
+        #send-btn { background: transparent; color: #00ffff; border: 1px solid #00ffff; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; letter-spacing: 1px; transition: 0.3s; }
+        #send-btn:hover { background: #00ffff; color: #000; box-shadow: 0 0 15px #00ffff; }
+        
+        .file-label { color: #00ffff; border: 1px solid rgba(0, 255, 255, 0.5); padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; display: flex; align-items: center; }
+        .file-label:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 10px #00ffff; }
+        #file-input { display: none; }
+        #file-preview { width: 100%; color: rgba(0, 255, 255, 0.7); font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; padding-bottom: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="glass-card" id="card">
+        <div class="content-wrapper">
+            <h1>Welcome to <span class="highlight">LLD World</span></h1>
+            <p>Experience the next generation of web design. Move your cursor to interact with the neural network.</p>
+            <button class="explore-btn" id="enter-btn">Initialize Connection</button>
+        </div>
+    </div>
+
+    <div id="terminal-interface">
+        <div class="terminal-header" id="term-header">
+            <span id="sys-status">SYS_CORE_V_3.0.0</span>
+            <span>MULTIMODAL_LINK_ESTABLISHED</span>
+        </div>
+        <div class="terminal-body" id="terminal-text"><span class="cursor" id="cursor"></span></div>
+        <div class="ai-core-container"><div class="ai-core" id="ai-orb"></div></div>
+        <div class="chat-container" id="chat-box">
+            <div class="message msg-ai">Greetings. The LLD Nexus Core is online. Awaiting text, image, or document transmission.</div>
+        </div>
+        
+        <div id="file-preview"></div>
+        <div class="input-area">
+            <label for="file-input" class="file-label">[+] UPLOAD</label>
+            <input type="file" id="file-input" accept="image/*,.pdf,.txt">
+            <span style="color:#00ffff; font-weight: bold; align-self: center;">></span>
+            <input type="text" id="ai-input" placeholder="Transmit query or analyze data..." autocomplete="off">
+            <button id="send-btn">SEND</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 3D Card Mechanics ---
+        const card = document.getElementById('card');
+        document.addEventListener('mousemove', (e) => {
+            if(card.classList.contains('disintegrate')) return;
+            let xAxis = (window.innerWidth / 2 - e.pageX) / 30;
+            let yAxis = (window.innerHeight / 2 - e.pageY) / 30;
+            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+        document.addEventListener('mouseleave', () => {
+            if(card.classList.contains('disintegrate')) return;
+            card.style.transform = `rotateY(0deg) rotateX(0deg)`;
+            card.style.transition = 'transform 0.5s ease';
+        });
+
+        // --- 2. Neural Background & Warp Effect ---
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        let particlesArray = []; let isWarpSpeed = false;
+        const mouse = { x: null, y: null, radius: 150 };
+        window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y; });
+
+        class Particle {
+            constructor(x, y, dirX, dirY, size, color) { this.x = x; this.y = y; this.dirX = dirX; this.dirY = dirY; this.size = size; this.color = color; }
+            draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false); ctx.fillStyle = this.color; ctx.fill(); }
+            update() {
+                if (!isWarpSpeed) {
+                    if (this.x > canvas.width || this.x < 0) this.dirX = -this.dirX;
+                    if (this.y > canvas.height || this.y < 0) this.dirY = -this.dirY;
+                    let dx = mouse.x - this.x; let dy = mouse.y - this.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < mouse.radius + this.size) {
+                        if (mouse.x < this.x && this.x < canvas.width - this.size * 10) this.x += 3;
+                        if (mouse.x > this.x && this.x > this.size * 10) this.x -= 3;
+                        if (mouse.y < this.y && this.y < canvas.height - this.size * 10) this.y += 3;
+                        if (mouse.y > this.y && this.y > this.size * 10) this.y -= 3;
+                    }
+                    this.x += this.dirX; this.y += this.dirY;
+                } else {
+                    let dx = this.x - canvas.width / 2; let dy = this.y - canvas.height / 2;
+                    this.x += dx * 0.04; this.y += dy * 0.04; this.size += 0.04;
+                    if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                        this.x = (Math.random() * canvas.width); this.y = (Math.random() * canvas.height); this.size = (Math.random() * 2) + 1;
+                    }
+                }
+                this.draw();
+            }
+        }
+        function init() { particlesArray = []; for (let i = 0; i < 150; i++) particlesArray.push(new Particle(Math.random()*innerWidth, Math.random()*innerHeight, (Math.random()*2)-1, (Math.random()*2)-1, (Math.random() * 2) + 1, '#00ffff')); }
+        function connect() {
+            if (isWarpSpeed) return;
+            for (let a = 0; a < particlesArray.length; a++) {
+                for (let b = a; b < particlesArray.length; b++) {
+                    let dist = ((particlesArray[a].x - particlesArray[b].x) ** 2) + ((particlesArray[a].y - particlesArray[b].y) ** 2);
+                    if (dist < (canvas.width / 7) * (canvas.height / 7)) {
+                        ctx.strokeStyle = 'rgba(0, 255, 255,' + (1 - (dist / 20000)) + ')';
+                        ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(particlesArray[a].x, particlesArray[a].y); ctx.lineTo(particlesArray[b].x, particlesArray[b].y); ctx.stroke();
+                    }
+                }
+            }
+        }
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isWarpSpeed) { ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; ctx.fillRect(0, 0, innerWidth, innerHeight); } else { ctx.clearRect(0, 0, innerWidth, innerHeight); }
+            for (let i = 0; i < particlesArray.length; i++) particlesArray[i].update(); connect();
+        }
+        window.addEventListener('resize', () => { canvas.width = innerWidth; canvas.height = innerHeight; init(); });
+        init(); animate();
+
+        // --- 3. Cinematic Boot Sequence ---
+        const enterBtn = document.getElementById('enter-btn'); const terminal = document.getElementById('terminal-interface'); const terminalText = document.getElementById('terminal-text'); const cursor = document.getElementById('cursor'); const chatBox = document.getElementById('chat-box'); const aiInput = document.getElementById('ai-input'); const sendBtn = document.getElementById('send-btn'); const aiOrb = document.getElementById('ai-orb');
+        const sequenceLines = ["Initiating root access...", "Bypassing protocols... [OK]", ">_ WAKING LLD MULTIMODAL CORE..."];
+
+        enterBtn.addEventListener('click', () => {
+            card.classList.add('disintegrate'); isWarpSpeed = true;
+            setTimeout(() => {
+                terminal.classList.add('active'); setTimeout(() => { isWarpSpeed = false; }, 1000);
+                let lineIdx = 0, charIdx = 0;
+                function typeChar() {
+                    if (lineIdx < sequenceLines.length) {
+                        if (charIdx < sequenceLines[lineIdx].length) {
+                            let span = document.createElement('span'); span.textContent = sequenceLines[lineIdx].charAt(charIdx); terminalText.insertBefore(span, cursor); charIdx++; setTimeout(typeChar, 25);
+                        } else {
+                            terminalText.insertBefore(document.createElement('br'), cursor); lineIdx++; charIdx = 0; setTimeout(typeChar, 400);
+                        }
+                    } else {
+                        setTimeout(() => { terminalText.style.display = 'none'; document.getElementById('sys-status').innerText = 'NEXUS_AI_ACTIVE'; terminal.classList.add('ai-mode'); aiInput.focus(); }, 1000);
+                    }
+                }
+                typeChar();
+            }, 1200);
+        });
+
+        // --- 4. Chat & Base64 File Handling ---
+        let fileBase64 = null; let fileMimeType = null; let fileName = null;
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 3 * 1024 * 1024) { alert("File too large. Keep under 3MB."); return; } // Prevent crashing free servers
+            
+            fileName = file.name; fileMimeType = file.type;
+            const preview = document.getElementById('file-preview');
+            preview.innerText = "DATA ATTACHED: " + fileName; preview.style.display = 'block';
+
+            const reader = new FileReader();
+            reader.onload = function(event) { fileBase64 = event.target.result.split(',')[1]; };
+            reader.readAsDataURL(file);
+        });
+
+        function appendMessage(text, className) {
+            let msgDiv = document.createElement('div'); msgDiv.className = `message ${className}`; msgDiv.textContent = text; chatBox.appendChild(msgDiv); chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function simulateAITyping(fullText) {
+            let msgDiv = document.createElement('div'); msgDiv.className = 'message msg-ai'; chatBox.appendChild(msgDiv);
+            let i = 0;
+            let typingInterval = setInterval(() => {
+                msgDiv.textContent += fullText.charAt(i); chatBox.scrollTop = chatBox.scrollHeight; i++;
+                if (i >= fullText.length) clearInterval(typingInterval);
+            }, 20);
+        }
+
+        // --- 5. SERVER CONNECTION ---
+        async function handleUserMessage() {
+            let text = aiInput.value.trim();
+            if (text === '' && !fileBase64) return;
+
+            let displayMsg = text;
+            if (fileName) displayMsg += `\n[Attached File: ${fileName}]`;
+            appendMessage(displayMsg, 'msg-user');
+            
+            aiInput.value = ''; document.getElementById('file-preview').style.display = 'none'; document.getElementById('file-preview').innerText = '';
+            
+            let payloadFile = fileBase64; let payloadMime = fileMimeType;
+            fileBase64 = null; fileMimeType = null; fileName = null; document.getElementById('file-input').value = '';
+
+            aiOrb.classList.add('thinking');
+            
+            try {
+                // 🚨🚨🚨 REPLACE 'YOUR_USERNAME' BELOW WITH YOUR ACTUAL PYTHONANYWHERE USERNAME! 🚨🚨🚨
+                const fetchUrl = 'https://lakshman.pythonanywhere.com/api/chat';
+                
+                const response = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, file_data: payloadFile, file_mime_type: payloadMime })
+                });
+
+                const data = await response.json();
+                aiOrb.classList.remove('thinking');
+                simulateAITyping(data.response);
+
+            } catch (error) {
+                aiOrb.classList.remove('thinking');
+                simulateAITyping("SYSTEM ERROR: Cannot connect to the remote Python server.");
+                console.error("Fetch error:", error);
+            }
+        }
+
+        sendBtn.addEventListener('click', handleUserMessage);
+        aiInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserMessage(); });
+    </script>
+</body>
+</html>
