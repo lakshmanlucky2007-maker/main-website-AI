@@ -170,7 +170,15 @@
 
         // --- 3. Cinematic Boot Sequence ---
         const enterBtn = document.getElementById('enter-btn'); const terminal = document.getElementById('terminal-interface'); const terminalText = document.getElementById('terminal-text'); const cursor = document.getElementById('cursor'); const chatBox = document.getElementById('chat-box'); const aiInput = document.getElementById('ai-input'); const sendBtn = document.getElementById('send-btn'); const aiOrb = document.getElementById('ai-orb');
-        const sequenceLines = ["Initiating root access...", "Bypassing protocols... [OK]", ">_ WAKING LLD MULTIMODAL CORE..."];
+        const sequenceLines = [
+    "Initiating root access protocol...",
+    "Bypassing standard security layers... [OK]",
+    "Authenticating admin credentials...",
+    "Access Granted: Welcome back, Lakshman.",
+    "Loading NxtWave skill modules... [VERIFIED]",
+    "Establishing secure connection to Visakhapatnam servers...",
+    ">_ WAKING LLD MULTIMODAL CORE..."
+];
 
         enterBtn.addEventListener('click', () => {
             card.classList.add('disintegrate'); isWarpSpeed = true;
